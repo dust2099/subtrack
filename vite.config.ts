@@ -11,22 +11,4 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src')
     }
   },
-  build: {
-    rolldownOptions: {
-      output: {
-        codeSplitting: {
-          groups: [
-            {
-              name: 'vendor',
-              debugName: 'vendor dependency splitting',
-              test: /node_modules[\\/]/,
-              minSize: 50 * 1024,
-              maxSize: 400 * 1024,
-              minShareCount: 1,
-            },
-          ],
-        },
-      },
-    },
-  }
 })
