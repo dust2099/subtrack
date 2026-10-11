@@ -20,6 +20,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 type AppSidebarProps = {
@@ -33,21 +34,27 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { pathname } = useLocation();
   const { t } = useTranslation();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
             <CreditCard aria-hidden="true" className="size-4" />
           </div>
-          <span className="font-semibold tracking-tight">Subtrack</span>
+          <span className="text-xl font-extrabold tracking-tight">Subtrack</span>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>{t('nav.workspace')}</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            {t('nav.workspace')}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -55,6 +62,9 @@ export function AppSidebar({
                   render={<NavLink to="/dashboard" end />}
                   isActive={pathname === '/dashboard'}
                   tooltip={t('nav.overview')}
+                  size="lg"
+                  className="rounded-xl font-semibold"
+                  onClick={closeMobileSidebar}
                 >
                   <LayoutDashboard aria-hidden="true" />
                   <span>{t('nav.overview')}</span>
@@ -65,6 +75,9 @@ export function AppSidebar({
                   render={<NavLink to="/dashboard/subscriptions" />}
                   isActive={pathname.startsWith('/dashboard/subscriptions')}
                   tooltip={t('nav.subscriptions')}
+                  size="lg"
+                  className="rounded-xl font-semibold"
+                  onClick={closeMobileSidebar}
                 >
                   <PanelsTopLeft aria-hidden="true" />
                   <span>{t('nav.subscriptions')}</span>
@@ -75,6 +88,9 @@ export function AppSidebar({
                   render={<NavLink to="/dashboard/friends" />}
                   isActive={pathname.startsWith('/dashboard/friends')}
                   tooltip={t('nav.friends')}
+                  size="lg"
+                  className="rounded-xl font-semibold"
+                  onClick={closeMobileSidebar}
                 >
                   <UsersRound aria-hidden="true" />
                   <span>{t('nav.friends')}</span>
@@ -95,6 +111,9 @@ export function AppSidebar({
               render={<NavLink to="/dashboard/settings" />}
               isActive={pathname.startsWith('/dashboard/settings')}
               tooltip={t('nav.settings')}
+              size="lg"
+              className="rounded-xl font-semibold"
+              onClick={closeMobileSidebar}
             >
               <Settings aria-hidden="true" />
               <span>{t('nav.settings')}</span>
@@ -107,6 +126,8 @@ export function AppSidebar({
               onClick={onLogout}
               disabled={loggingOut}
               tooltip={loggingOut ? t('common.signingOut') : t('common.signOut')}
+              size="lg"
+              className="rounded-xl font-semibold"
             >
               <LogOut aria-hidden="true" />
               <span>{loggingOut ? t('common.signingOut') : t('common.signOut')}</span>

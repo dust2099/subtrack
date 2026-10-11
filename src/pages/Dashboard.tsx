@@ -83,10 +83,10 @@ function Dashboard() {
         />
 
         <SidebarInset className="min-h-svh">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/90 px-5 backdrop-blur-md md:h-20 md:px-8">
             <SidebarTrigger />
             <div className="h-4 w-px bg-border" aria-hidden="true" />
-            <span className="text-sm font-medium">{pageTitle}</span>
+            <span className="text-sm font-bold">{pageTitle}</span>
             <div className="ml-auto flex items-center gap-2">
               {user && <NotificationsBell key={user.id} userId={user.id} />}
               <div className="relative" ref={accountMenuRef}>

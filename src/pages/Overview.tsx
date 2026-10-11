@@ -86,7 +86,7 @@ function Overview() {
     ) : (
       <span className="flex flex-col gap-0.5">
         {monthlyTotals.map(({ currency, amount }) => (
-          <span key={currency} className="text-xl">
+          <span key={currency}>
             {formatMoney(amount, currency, i18n.language)}
           </span>
         ))}
@@ -99,12 +99,20 @@ function Overview() {
       value: spendingValue,
       description: t('overview.monthlyEquivalent'),
       icon: DollarSign,
+      accent: {
+        card: 'border-coral/20 bg-coral-soft',
+        icon: 'bg-white/70 text-coral dark:bg-white/10',
+      },
     },
     {
       title: t('overview.activeSubscriptions'),
       value: subscriptions.length.toString(),
       description: t('overview.includingShared'),
       icon: CreditCard,
+      accent: {
+        card: 'border-emerald-600/20 bg-mint dark:border-emerald-400/20',
+        icon: 'bg-white/70 text-emerald-800 dark:bg-white/10 dark:text-emerald-200',
+      },
     },
     {
       title: t('overview.nextPayment'),
@@ -117,6 +125,10 @@ function Overview() {
         ? `${nextPayment.name} · ${formatPaymentDate(nextPayment.nextBillingDate, i18n.language)}`
         : t('overview.noUpcoming'),
       icon: CalendarDays,
+      accent: {
+        card: 'border-amber-600/20 bg-butter dark:border-amber-400/20',
+        icon: 'bg-white/70 text-amber-800 dark:bg-white/10 dark:text-amber-200',
+      },
     },
   ];
 
@@ -141,9 +153,9 @@ function Overview() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-7">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm text-muted-foreground">
+          <p className="mb-2 text-sm font-bold text-primary">
             {new Intl.DateTimeFormat(i18n.language, {
               weekday: 'long',
               month: 'long',
@@ -151,10 +163,10 @@ function Overview() {
               year: 'numeric',
             }).format(now)}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             {t('overview.greeting', { greeting, name: username })}
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
             {t('overview.intro')}
           </p>
         </div>
@@ -173,38 +185,46 @@ function Overview() {
 
       <section
         aria-label={t('overview.summary')}
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid gap-4 sm:grid-cols-3"
       >
-        {stats.map(({ title, value, description, icon: Icon }) => (
-          <Card key={title}>
-            <CardHeader className="flex items-start justify-between gap-4">
+        {stats.map(({ title, value, description, icon: Icon, accent }) => (
+          <Card key={title} className={`relative min-h-40 ${accent.card}`}>
+            <CardHeader className="relative z-10 flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-semibold text-muted-foreground">
                   {title}
                 </CardTitle>
-                <div className="mt-3 text-2xl font-semibold tracking-tight">
+                <div className="mt-3 text-3xl font-extrabold tracking-tight">
                   {value}
                 </div>
               </div>
-              <div className="rounded-lg bg-muted p-2 text-muted-foreground">
+              <div className={`rounded-2xl p-3 ${accent.icon}`}>
                 <Icon aria-hidden="true" className="size-4" />
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">{description}</p>
+            <CardContent className="relative z-10">
+              <p className="text-xs font-medium text-muted-foreground">
+                {description}
+              </p>
             </CardContent>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-8 -right-6 size-28 rounded-full border-[16px] border-white/35 dark:border-white/10"
+            />
           </Card>
         ))}
       </section>
 
       <section
         aria-label={t('overview.paymentsAndSpending')}
-        className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]"
+        className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,0.75fr)]"
       >
         <Card>
           <CardHeader className="flex items-start justify-between">
             <div>
-              <CardTitle>{t('overview.upcomingPayments')}</CardTitle>
+              <CardTitle className="font-bold">
+                {t('overview.upcomingPayments')}
+              </CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t('overview.nextCharges')}
               </p>
@@ -264,7 +284,9 @@ function Overview() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle>{t('overview.monthlyCostChart')}</CardTitle>
+              <CardTitle className="font-bold">
+                {t('overview.monthlyCostChart')}
+              </CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t('overview.monthlyEquivalents')}
               </p>
