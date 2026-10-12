@@ -263,7 +263,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
         <section
           role="dialog"
           aria-label={t('notifications.title')}
-          className="absolute right-0 top-full z-50 mt-2 max-h-[min(75vh,34rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border bg-popover p-3 text-popover-foreground shadow-xl"
+          className="fixed inset-x-2 top-20 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border bg-popover p-3 text-popover-foreground shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(75vh,34rem)] sm:w-[min(24rem,calc(100vw-2rem))]"
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold">{t('notifications.title')}</h2>
@@ -299,8 +299,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{item.detail}</p>
+                      <p className="break-words text-sm font-medium">{item.title}</p>
+                      <p className="mt-0.5 break-words text-xs text-muted-foreground">{item.detail}</p>
                     </div>
                   </div>
                   <div className="mt-3 flex justify-end gap-2">

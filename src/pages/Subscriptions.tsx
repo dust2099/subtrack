@@ -63,6 +63,33 @@ type EditableSubscriptionMember = SelectedMember & {
   status: 'pending' | 'active';
 };
 
+type SubscriptionMemberRecord = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  share_amount: number | string;
+  status: string;
+};
+
+function toEditableSubscriptionMembers(
+  members: SubscriptionMemberRecord[],
+): EditableSubscriptionMember[] {
+  return members
+    .filter(
+      (member): member is SubscriptionMemberRecord & { status: 'pending' | 'active' } =>
+        member.status === 'pending' || member.status === 'active',
+    )
+    .map((member) => ({
+      user_id: member.user_id,
+      username: member.username,
+      display_name: member.display_name,
+      avatar_url: member.avatar_url,
+      shareAmount: String(member.share_amount),
+      status: member.status,
+    }));
+}
+
 function getLocalDateInputValue(date: Date) {
   return [
     date.getFullYear(),
@@ -128,6 +155,9 @@ function Subscriptions() {
   const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>([]);
   const [editMembers, setEditMembers] = useState<EditableSubscriptionMember[]>([]);
   const [editMembersLoading, setEditMembersLoading] = useState(false);
+  const [editInviteUsername, setEditInviteUsername] = useState('');
+  const [editInviteShare, setEditInviteShare] = useState('');
+  const [editMemberBusy, setEditMemberBusy] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingColorId, setSavingColorId] = useState<string | null>(null);
@@ -335,6 +365,9 @@ function Subscriptions() {
     setSelectedMembers([]);
     setEditMembers([]);
     setEditMembersLoading(false);
+    setEditInviteUsername('');
+    setEditInviteShare('');
+    setEditMemberBusy(null);
     setFormError(null);
   }, [defaultCategory]);
 
@@ -392,6 +425,9 @@ function Subscriptions() {
     setMemberSearchError(null);
     setSelectedMembers([]);
     setEditMembers([]);
+    setEditInviteUsername('');
+    setEditInviteShare('');
+    setEditMemberBusy(null);
     setEditMembersLoading(true);
     setFormError(null);
     setCatalogOpen(true);
@@ -407,28 +443,8 @@ function Subscriptions() {
         return;
       }
 
-      const members = (data ?? []) as Array<{
-        user_id: string;
-        username: string;
-        display_name: string;
-        avatar_url: string | null;
-        share_amount: number | string;
-        status: string;
-      }>;
       setEditMembers(
-        members
-          .filter(
-            (member): member is typeof member & { status: 'pending' | 'active' } =>
-              member.status === 'pending' || member.status === 'active',
-          )
-          .map((member) => ({
-            user_id: member.user_id,
-            username: member.username,
-            display_name: member.display_name,
-            avatar_url: member.avatar_url,
-            shareAmount: String(member.share_amount),
-            status: member.status,
-          })),
+        toEditableSubscriptionMembers((data ?? []) as SubscriptionMemberRecord[]),
       );
     } catch (membersError) {
       if (loadId !== editMembersLoadId.current) return;
@@ -439,6 +455,102 @@ function Subscriptions() {
       );
     } finally {
       if (loadId === editMembersLoadId.current) setEditMembersLoading(false);
+    }
+  };
+
+  const inviteEditMember = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingSubscription) return;
+
+    const loadId = editMembersLoadId.current;
+    setEditMemberBusy('invite');
+    setFormError(null);
+    let invitationSent = false;
+    try {
+      const { error: inviteError } = await supabase.rpc(
+        'invite_subscription_member',
+        {
+          p_subscription_id: editingSubscription.id,
+          p_username: editInviteUsername.trim(),
+          p_share_amount: Number(editInviteShare),
+        },
+      );
+      if (inviteError) {
+        setFormError(t('sharing.inviteError', { message: inviteError.message }));
+        return;
+      }
+      invitationSent = true;
+      setEditInviteUsername('');
+      setEditInviteShare('');
+      refresh();
+
+      const { data, error: membersError } = await supabase.rpc(
+        'get_subscription_members',
+        { p_subscription_id: editingSubscription.id },
+      );
+      if (loadId !== editMembersLoadId.current) return;
+      if (membersError) {
+        setFormError(
+          t('subscriptions.inviteRefreshError', { message: membersError.message }),
+        );
+        return;
+      }
+
+      setEditMembers(
+        toEditableSubscriptionMembers((data ?? []) as SubscriptionMemberRecord[]),
+      );
+    } catch (inviteError) {
+      if (loadId !== editMembersLoadId.current) return;
+      const message =
+        inviteError instanceof Error
+          ? inviteError.message
+          : t('subscriptions.memberLoadErrorGeneric');
+      setFormError(
+        invitationSent
+          ? t('subscriptions.inviteRefreshError', { message })
+          : inviteError instanceof Error
+            ? t('sharing.inviteError', { message })
+            : t('sharing.inviteErrorGeneric'),
+      );
+    } finally {
+      if (loadId === editMembersLoadId.current) setEditMemberBusy(null);
+    }
+  };
+
+  const removeEditMember = async (member: EditableSubscriptionMember) => {
+    if (!editingSubscription) return;
+    const confirmed = window.confirm(t('sharing.removeMemberConfirm'));
+    if (!confirmed) return;
+
+    const loadId = editMembersLoadId.current;
+    setEditMemberBusy(member.user_id);
+    setFormError(null);
+    try {
+      const { error: removeError } = await supabase.rpc(
+        'remove_subscription_member',
+        {
+          p_subscription_id: editingSubscription.id,
+          p_user_id: member.user_id,
+        },
+      );
+      if (removeError) {
+        setFormError(t('sharing.removeError', { message: removeError.message }));
+        return;
+      }
+      if (loadId !== editMembersLoadId.current) return;
+      setEditMembers((current) =>
+        current.filter((selected) => selected.user_id !== member.user_id),
+      );
+      refresh();
+    } catch (removeError) {
+      if (loadId !== editMembersLoadId.current) return;
+      setFormError(
+        removeError instanceof Error
+          ? t('sharing.removeError', { message: removeError.message })
+          : t('sharing.removeErrorGeneric'),
+      );
+    } finally {
+      if (loadId === editMembersLoadId.current) setEditMemberBusy(null);
     }
   };
 
@@ -755,8 +867,8 @@ function Subscriptions() {
       )}
 
       {selection && catalogOpen && catalogContentElement && createPortal((
-        <div>
-            <form className="grid gap-3 sm:grid-cols-2" onSubmit={handleAdd}>
+        <div className="min-w-0">
+            <form className="grid min-w-0 gap-3 sm:grid-cols-2" onSubmit={handleAdd}>
               <div className="grid gap-2">
                 <Label htmlFor="subscription-name">{t('subscriptions.name')}</Label>
                 <Input
@@ -953,7 +1065,7 @@ function Subscriptions() {
                               @{member.username}
                             </p>
                           </div>
-                          <div className="w-24 shrink-0">
+                          <div className="w-20 shrink-0 sm:w-24">
                             <Label className="sr-only" htmlFor={`create-member-share-${member.user_id}`}>
                               {t('sharing.memberShare', { currency: currency.toUpperCase() })}
                             </Label>
@@ -1006,6 +1118,51 @@ function Subscriptions() {
               {editingSubscription && (
                 <div className="grid gap-2 sm:col-span-2">
                   <Label>{t('subscriptions.memberContributions')}</Label>
+                  <form
+                    className="grid items-end gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
+                    onSubmit={(event) => void inviteEditMember(event)}
+                  >
+                    <div className="grid gap-1">
+                      <Label htmlFor="edit-member-username">
+                        {t('sharing.username')}
+                      </Label>
+                      <Input
+                        id="edit-member-username"
+                        value={editInviteUsername}
+                        onChange={(event) => setEditInviteUsername(event.target.value)}
+                        placeholder={t('sharing.usernamePlaceholder')}
+                        autoComplete="off"
+                        required
+                        disabled={editMembersLoading || editMemberBusy !== null}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="edit-member-invite-share">
+                        {t('sharing.memberShare', { currency: currency.toUpperCase() })}
+                      </Label>
+                      <Input
+                        id="edit-member-invite-share"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        max={cost}
+                        value={editInviteShare}
+                        onChange={(event) => setEditInviteShare(event.target.value)}
+                        required
+                        disabled={editMembersLoading || editMemberBusy !== null}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={editMembersLoading || editMemberBusy !== null}
+                      className="w-full sm:w-auto"
+                    >
+                      <Share2 aria-hidden="true" />
+                      {editMemberBusy === 'invite'
+                        ? t('subscriptions.sendingInvite')
+                        : t('sharing.sendInvite')}
+                    </Button>
+                  </form>
                   {editMembersLoading ? (
                     <p className="text-sm text-muted-foreground" role="status">
                       {t('subscriptions.loadingMemberContributions')}
@@ -1032,7 +1189,7 @@ function Subscriptions() {
                               @{member.username}
                             </p>
                           </div>
-                          <div className="w-24 shrink-0">
+                          <div className="w-20 shrink-0 sm:w-24">
                             <Label
                               className="sr-only"
                               htmlFor={`edit-member-share-${member.user_id}`}
@@ -1059,6 +1216,16 @@ function Subscriptions() {
                               aria-label={t('sharing.memberShare', { currency: currency.toUpperCase() })}
                             />
                           </div>
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={t('subscriptions.removeMember', { name: member.display_name })}
+                            disabled={editMemberBusy !== null || saving}
+                            onClick={() => void removeEditMember(member)}
+                          >
+                            <X aria-hidden="true" />
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -1073,8 +1240,12 @@ function Subscriptions() {
                   {formError}
                 </p>
               )}
-              <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit" disabled={saving || editMembersLoading}>
+              <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row">
+                <Button
+                  type="submit"
+                  disabled={saving || editMembersLoading}
+                  className="w-full sm:w-auto"
+                >
                   {saving
                     ? editingSubscription
                       ? t('subscriptions.savingChanges')
@@ -1088,6 +1259,7 @@ function Subscriptions() {
                   variant="outline"
                   onClick={clearForm}
                   disabled={saving}
+                  className="w-full sm:w-auto"
                 >
                   {t('common.cancel')}
                 </Button>
@@ -1133,7 +1305,146 @@ function Subscriptions() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <ul className="grid gap-3 xl:hidden">
+                {sortedSubscriptions.map((subscription) => {
+                  const amount = getEffectiveAmount(subscription);
+
+                  return (
+                    <li
+                      key={subscription.id}
+                      className="min-w-0 rounded-xl border p-3"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <SubscriptionLogo
+                            name={subscription.name}
+                            logoUrl={subscription.logoUrl}
+                            avatarColor={getSubscriptionAvatarColor(subscription)}
+                            className="size-9"
+                          />
+                          <div className="min-w-0">
+                            <p className="break-words font-medium">
+                              {subscription.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {translateSubscriptionCategory(subscription.category)}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="shrink-0 text-right text-sm font-semibold">
+                          {amount === null
+                            ? t('overview.shareUnavailable')
+                            : formatMoney(amount, subscription.currency, i18n.language)}
+                          {amount !== null && (
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              / {subscription.billingCycle === 'yearly'
+                                ? t('common.year')
+                                : subscription.billingCycle === 'weekly'
+                                  ? t('common.week')
+                                  : t('common.month')}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      {subscription.memberPreviews.length > 0 && (
+                        <SubscriptionMemberAvatars
+                          members={subscription.memberPreviews}
+                          currentUserId={user?.id}
+                          className="mt-2"
+                        />
+                      )}
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+                        <div className="min-w-0">
+                          <dt className="text-muted-foreground">
+                            {t('subscriptions.nextPayment')}
+                          </dt>
+                          <dd className="mt-0.5 font-medium">
+                            {formatPaymentDate(subscription.nextBillingDate, i18n.language)}
+                          </dd>
+                        </div>
+                        <div className="min-w-0">
+                          <dt className="text-muted-foreground">
+                            {t('subscriptions.type')}
+                          </dt>
+                          <dd className="mt-0.5">
+                            <span className="inline-flex rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
+                              {subscription.isShared
+                                ? t('common.sharedWithYou')
+                                : t('common.owned')}
+                            </span>
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="mt-3 flex items-center justify-between border-t pt-2">
+                        <label className="inline-flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {t('subscriptions.avatarColor')}
+                          </span>
+                          <input
+                            type="color"
+                            aria-label={t('subscriptions.avatarColorFor', { name: subscription.name })}
+                            value={getSubscriptionAvatarColor(subscription)}
+                            disabled={savingColorId === subscription.id}
+                            onChange={(event) =>
+                              void handleColorChange(subscription.id, event.target.value)
+                            }
+                            className="size-8 cursor-pointer rounded-md border border-input bg-transparent p-0.5 disabled:cursor-wait disabled:opacity-50"
+                          />
+                        </label>
+                        <div className="flex items-center gap-1">
+                          {user && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t(
+                                subscription.isShared
+                                  ? 'sharing.openShared'
+                                  : 'sharing.manage',
+                                { name: subscription.name },
+                              )}
+                              onClick={() =>
+                                setSharingSubscriptionId((current) =>
+                                  current === subscription.id ? null : subscription.id,
+                                )
+                              }
+                            >
+                              <Share2 aria-hidden="true" />
+                            </Button>
+                          )}
+                          {!subscription.isShared && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t('subscriptions.edit', { name: subscription.name })}
+                                onClick={() => startEditing(subscription)}
+                              >
+                                <Pencil aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t('subscriptions.remove', { name: subscription.name })}
+                                disabled={deletingId === subscription.id}
+                                onClick={() =>
+                                  void handleRemove(subscription.id, subscription.name)
+                                }
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="hidden overflow-x-auto xl:block">
               <table className="w-full min-w-[48rem] text-left text-sm">
                 <thead>
                   <tr className="border-b text-xs text-muted-foreground">
@@ -1285,14 +1596,15 @@ function Subscriptions() {
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {catalogOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm sm:p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeCatalog();
           }}
@@ -1301,13 +1613,13 @@ function Subscriptions() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="subscription-catalog-title"
-            className="flex max-h-[min(90vh,52rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl"
+            className="flex min-w-0 max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl sm:max-h-[min(90vh,52rem)]"
           >
-            <header className="flex flex-wrap items-start justify-between gap-4 border-b p-5 sm:p-6">
-              <div>
+            <header className="flex items-start justify-between gap-3 border-b p-4 sm:gap-4 sm:p-6">
+              <div className="min-w-0 flex-1">
                 <h2
                   id="subscription-catalog-title"
-                  className="text-xl font-semibold tracking-tight"
+                  className="break-words text-xl font-semibold tracking-tight"
                 >
                   {editingSubscription
                     ? t('subscriptions.editTitle', { name: editingSubscription.name })
@@ -1351,7 +1663,7 @@ function Subscriptions() {
             )}
             <div
               ref={setCatalogContentElement}
-              className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
+              className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6"
             >
               {!selection && (catalog.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-center">
@@ -1406,15 +1718,15 @@ function Subscriptions() {
                 </ul>
               ))}
             </div>
-            {!selection && <footer className="border-t bg-muted/40 p-4 sm:p-5">
-              <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center">
+            {!selection && <footer className="border-t bg-muted/40 p-3 sm:p-5">
+              <div className="flex flex-col items-stretch justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:p-4">
                 <div>
                   <p className="font-semibold">{t('subscriptions.customPrompt')}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {t('subscriptions.customDescription')}
                   </p>
                 </div>
-                <Button type="button" onClick={selectCustom}>
+                <Button type="button" onClick={selectCustom} className="w-full sm:w-auto">
                   <Plus aria-hidden="true" />
                   {t('subscriptions.addCustom')}
                 </Button>

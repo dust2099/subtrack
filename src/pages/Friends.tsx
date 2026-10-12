@@ -407,40 +407,34 @@ function Friends() {
         </p>
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <CardTitle>{t('friends.incomingRequests')}</CardTitle>
-              {incomingRequests.length > 0 && (
+          {incomingRequests.length > 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <CardTitle>{t('friends.incomingRequests')}</CardTitle>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
                   {incomingRequests.length}
                 </span>
-              )}
-            </CardHeader>
-            <CardContent>
-              {incomingRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('friends.noIncomingRequests')}</p>
-              ) : (
+              </CardHeader>
+              <CardContent>
                 <ul className="divide-y">
                   {incomingRequests.map(renderPerson)}
                 </ul>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('friends.outgoingRequests')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {outgoingRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('friends.noOutgoingRequests')}</p>
-              ) : (
+          {outgoingRequests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('friends.outgoingRequests')}</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <ul className="divide-y">
                   {outgoingRequests.map(renderPerson)}
                 </ul>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center gap-2">
