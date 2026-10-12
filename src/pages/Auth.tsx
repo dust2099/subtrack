@@ -27,6 +27,11 @@ export function Auth() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
+  const [accountActivated] = useState(
+    () => new URLSearchParams(window.location.search).get('confirmed') === '1',
+  );
 
   // Estados del formulario de Login
   const [loginEmail, setLoginEmail] = useState('');
@@ -76,6 +81,7 @@ export function Auth() {
         email: registerEmail,
         password: registerPassword,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth?confirmed=1`,
           data: {
             username: registerUsername.toLowerCase().trim(),
             display_name: registerUsername.trim(),
@@ -88,9 +94,8 @@ export function Auth() {
       } else if (data.session) {
         navigate('/dashboard');
       } else {
-        setSuccessMessage(
-          t('auth.accountCreated'),
-        );
+        setSuccessMessage(t('auth.accountCreated'));
+        setRegistrationComplete(true);
       }
     } catch (error) {
       setErrorMessage(
@@ -117,8 +122,36 @@ export function Auth() {
       </div>
 
       {/* Contenedor con Tabs */}
+      {registrationComplete ? (
+        <Card className="w-full max-w-md border-border/50 shadow-xl">
+          <CardContent className="space-y-4 pt-6">
+            <p
+              className="rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary"
+              role="status"
+            >
+              {successMessage}
+            </p>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                setRegistrationComplete(false);
+                setActiveTab('login');
+                setSuccessMessage(null);
+                setErrorMessage(null);
+              }}
+            >
+              {t('auth.backToLogin')}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="w-full max-w-md border-border/50 shadow-xl">
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value === 'register' ? 'register' : 'login')}
+          className="w-full"
+        >
           <CardHeader className="space-y-1 pb-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
@@ -138,6 +171,14 @@ export function Auth() {
                 role="status"
               >
                 {successMessage}
+              </div>
+            )}
+            {accountActivated && activeTab === 'login' && (
+              <div
+                className="mb-4 rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary"
+                role="status"
+              >
+                {t('auth.accountActivated')}
               </div>
             )}
 
@@ -243,6 +284,7 @@ export function Auth() {
           </CardFooter>
         </Tabs>
       </Card>
+      )}
     </div>
   );
 }

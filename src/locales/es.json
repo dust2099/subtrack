@@ -56,6 +56,8 @@
     "registerButton": "Crear mi cuenta",
     "description": "Gestiona tus suscripciones y gastos compartidos fácilmente.",
     "accountCreated": "Cuenta creada. Revisa tu correo y confirma la dirección antes de iniciar sesión.",
+    "backToLogin": "Volver a iniciar sesión",
+    "accountActivated": "Tu cuenta está activada. Inicia sesión para continuar.",
     "loginFailed": "No se pudo iniciar sesión.",
     "registerFailed": "No se pudo crear la cuenta."
   },

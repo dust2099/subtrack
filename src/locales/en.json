@@ -56,6 +56,8 @@
     "registerButton": "Create my account",
     "description": "Manage your subscriptions and shared expenses with ease.",
     "accountCreated": "Account created. Check your email and confirm your address before signing in.",
+    "backToLogin": "Back to sign in",
+    "accountActivated": "Your account is activated. Sign in to continue.",
     "loginFailed": "Could not sign in.",
     "registerFailed": "Could not create your account."
   },
